@@ -4,11 +4,8 @@
 	<meta charset="utf-8">
 	<meta http-equiv="x-ua-compatible" content="ie=edge">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" href="favicon.ico" type="image/x-icon"/>
-  <link rel="stylesheet" href="examples-styles.css"/>
 
 	<title>abcjs: Basic Demo</title>
-	<!--<script src="./dist/abcjs-basic.js" type="text/javascript"></script>-->
 	<script src="https://cdn.jsdelivr.net/npm/abcjs@6.3.0/dist/abcjs-basic-min.js" type="text/javascript"></script>
 	<script type="text/javascript">
 		var kammerton = 
@@ -40,7 +37,6 @@
         var mediaStream;
 
         var mediaRecorder;
-
 
 		async function load() {
             document.querySelector(".play").addEventListener("click", play);
@@ -164,11 +160,52 @@
         }
 
 	</script>
+	<script type="module">
+import { PitchDetector } from "https://esm.sh/pitchy@4";
+
+function updatePitch(analyserNode, detector, input, sampleRate) {
+  analyserNode.getFloatTimeDomainData(input);
+  const [pitch, clarity] = detector.findPitch(input, sampleRate);
+
+  document.getElementById("pitch").textContent = `${
+    Math.round(pitch * 10) / 10
+  } Hz`;
+  document.getElementById("clarity").textContent = `${Math.round(
+    clarity * 100,
+  )} %`;
+  window.setTimeout(
+    () => updatePitch(analyserNode, detector, input, sampleRate),
+    100,
+  );
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const audioContext = new window.AudioContext();
+  const analyserNode = audioContext.createAnalyser();
+
+  document
+    .getElementById("resume-button")
+    .addEventListener("click", () => audioContext.resume());
+
+  navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+    audioContext.createMediaStreamSource(stream).connect(analyserNode);
+    const detector = PitchDetector.forFloat32Array(analyserNode.fftSize);
+    detector.minVolumeDecibels = -20;
+    const input = new Float32Array(detector.inputLength);
+    updatePitch(analyserNode, detector, input, audioContext.sampleRate);
+  });
+});
+    </script>
+
 </head>
 <body onload="load()">
   <header>
     <h1>Proof of Concept</h1>
   </header>
+    <button id="resume-button">resume</button>
+    <p id="pitch"></p>
+    <p id="clarity"></p>
+
   <button class="play">Play Kammerton</button>
   <div class="error"></div>
   <div class="container">
