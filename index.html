@@ -90,7 +90,7 @@
                 const blob = new Blob(chunks, { type: "audio/ogg; codecs=opus" });
                 chunks = [];
                 const audioURL = window.URL.createObjectURL(blob);
-                const audio = document.querySelector('audio');
+                const audio = document.getElementById('recorder');
                 audio.src = audioURL;
             };
         }
@@ -163,16 +163,61 @@
 	<script type="module">
 import { PitchDetector } from "https://esm.sh/pitchy@4";
 
+const oct0 = [16.35,17.32,18.35,19.45,20.6,21.83,23.12,24.5,25.96,27.5,29.14,30.87];
+const oct1 = [32.7,34.65,36.71,38.89,41.2,43.65,46.25,49,51.91,55,58.27,61.74];
+const oct2 = [65.41,69.3,73.42,77.78,82.41,87.31,92.5,98,103.83,110,116.54,123.47];
+const oct3 = [130.81,138.59,146.83,155.56,164.81,174.61,185,196,207.65,220,233.08,246.94];
+const oct4 = [261.63,277.18,293.66,311.13,329.63,349.23,369.99,392,415.3,440,466.16,493.88];
+const oct5 = [523.25,554.37,587.33,622.25,659.25,698.46,739.99,783.99,830.61,880,932.33,987.77];
+const oct6 = [1046.5,1108.73,1174.66,1244.51,1318.51,1396.91,1479.98,1567.98,1661.22,1760,1864.66,1975.53];
+const oct7 = [2093,2217.46,2349.32,2489,2637,2793.83,2959.96,3135.96,3322.44,3520,3729.31,3951];
+const oct8 = [4186,4434.92,4698.63,4978,5274,5587.65,5919.91,6271.93,6644.88,7040,7458.62,7902.13];
+
+const sop1obj = {
+    pitch: oct4[4],
+    count: 0,
+    ele: 'sop1',
+    eleCheck: 'sop1check',
+}
+const sop2obj = {
+    pitch: oct3[11],
+    count: 0,
+    ele: 'sop2',
+    eleCheck: 'sop2check',
+}
+const altoobj = {
+    pitch: oct3[7],
+    count: 0,
+    ele: 'alto',
+    eleCheck: 'altocheck',
+}
+const tenorobj = {
+    pitch: oct3[11],
+    count: 0,
+    ele: 'tenor',
+    eleCheck: 'tenorcheck',
+}
+const bassobj = {
+    pitch: oct3[4],
+    count: 0,
+    ele: 'bass',
+    eleCheck: 'basscheck',
+}
+
+const objs = [sop1obj, sop2obj, altoobj, tenorobj, bassobj];
+
+
 function updatePitch(analyserNode, detector, input, sampleRate) {
   analyserNode.getFloatTimeDomainData(input);
   const [pitch, clarity] = detector.findPitch(input, sampleRate);
 
-  document.getElementById("pitch").textContent = `${
-    Math.round(pitch * 10) / 10
-  } Hz`;
-  document.getElementById("clarity").textContent = `${Math.round(
-    clarity * 100,
-  )} %`;
+  const pitchCorrected = Math.round(pitch * 10) / 10;
+  const clarityCorrected = Math.round(clarity * 100);
+  if (objs.length !== 0) {
+    checkPitch(pitchCorrected, clarityCorrected, objs[0]);
+  }
+  document.getElementById("pitch").textContent = `${pitchCorrected} Hz`;
+  document.getElementById("clarity").textContent = `${clarityCorrected} %`;
   window.setTimeout(
     () => updatePitch(analyserNode, detector, input, sampleRate),
     100,
@@ -195,6 +240,29 @@ document.addEventListener("DOMContentLoaded", () => {
     updatePitch(analyserNode, detector, input, audioContext.sampleRate);
   });
 });
+
+function checkPitch(pitch, clarity, obj) {
+    console.log('pitch, clarity', pitch, clarity);
+    console.log(obj.pitch*0.95);
+    console.log(obj.pitch*1.05);
+    console.log(obj.count);
+    if (clarity < 95) {
+        document.getElementById(obj.ele).style.color = 'grey';
+        return;
+    }
+    if (pitch > obj.pitch*0.95 && pitch < obj.pitch*1.05) {
+        document.getElementById(obj.ele).style.color = 'green';
+        obj.count = obj.count + 1;
+        if (obj.count === 10) {
+            document.getElementById(obj.eleCheck).textContent = '> correct';
+            document.getElementById(obj.eleCheck).style.color = 'green';
+            objs.shift();
+            console.log(objs);
+        }
+    } else {
+        document.getElementById(obj.ele).style.color = 'red';
+    }
+}
     </script>
 
 </head>
@@ -203,20 +271,44 @@ document.addEventListener("DOMContentLoaded", () => {
     <h1>Proof of Concept</h1>
   </header>
     <button id="resume-button">resume</button>
-    <p id="pitch"></p>
-    <p id="clarity"></p>
 
   <button class="play">Play Kammerton</button>
+  <!-- <button onclick="playSine()">Play Audio</button> -->
   <div class="error"></div>
   <div class="container">
     <div id="paper"></div>
   </div>
 
-  <button class="record">record</button>
-  <button class="stop">stop</button>
+  <p>Sine Wave Kammerton</p>
+  <audio controls>
+    <source src="sine_440.ogg" type="audio/ogg">
+  </audio>
 
   <div>
-  <audio controls></audio>
+    Sing the notes:
+    <div style="display: flex;">
+        <p id="sop1">Soprano 1</p><p style="margin-left: 15px;" id="sop1check"></p>
+    </div>
+    <div style="display: flex;">
+    <p id="sop2">Soprano 2</p><p style="margin-left: 15px;" id="sop2check"></p>
+    </div>
+    <div style="display: flex;">
+    <p id="alto">Alto</p><p style="margin-left: 15px;" id="altocheck"></p>
+    </div>
+    <div style="display: flex;">
+    <p id="tenor">Tenor</p><p style="margin-left: 15px;" id="tenorcheck"></p>
+    </div>
+    <div style="display: flex;">
+    <p id="bass">Bass</p><p style="margin-left: 15px;" id="basscheck"></p>
+    </div>
+    <p id="pitch"></p>
+    <p id="clarity"></p>
+  </div>
+
+  <button class="record">record</button>
+  <button class="stop">stop</button>
+  <div>
+  <audio id="recorder" controls></audio>
   </div>
 
   <button class="playSolution">Play Solution</button>
